@@ -3,7 +3,7 @@ import com.google.common.hash.Hashing;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class BloomFilterPolicy implements FilterPolicy {
+public class BloomFilterPolicy implements FilterPolicy<ByteBuffer> {
 
     private final int bitsPerKey;
     private int k;
@@ -13,7 +13,7 @@ public class BloomFilterPolicy implements FilterPolicy {
         // 哈希函数的个数k，位数组的长度 m，数据集大小n;
         // 1. 为了获得最优的准确率，当k = ln2 * (m/n)时，布隆过滤器获得最优的准确性；
         // 2. 在哈希函数的个数取到最优时，要让错误率不超过є，m至少需要取到最小值的1.44倍；
-        // 创建一个布隆过滤器时，只需要指定为每个key分配的位数，该值（m/n）大于1.44即可，一般可以取10（容量m是插入数据量n比特位的10倍）。
+        // 创建一个布隆过滤器时，只需要指定为每个key分配的位数，该值（m/n）大于1.44即可
         k = (int) (bitsPerKey * 0.69);  // 0.69 =~ ln(2)
         if (k < 1) {
             k = 1;
@@ -25,7 +25,7 @@ public class BloomFilterPolicy implements FilterPolicy {
 
     @Override
     public String name() {
-        return "leveldb.BuiltinBloomFilter2";
+        return "leveldb.BuiltinBloomFilter";
     }
 
     @Override
@@ -47,7 +47,8 @@ public class BloomFilterPolicy implements FilterPolicy {
                 .position(0);
         for (byte[] key : keys) {
             long h = bloomHash(key);
-            long delta = Utils.getUnsignedInt(Hashing.murmur3_128().hashLong(h).hashCode());
+            // double hashing开放定址法
+            long delta = reHashing(h);
             for (int j = 0; j < k; j++) {
                 int bitPos = (int) (h % bits);
                 byte bitVal = result.position(bitPos / 8).get();
@@ -71,7 +72,7 @@ public class BloomFilterPolicy implements FilterPolicy {
             return true;
         }
         long h = bloomHash(key);
-        long delta = Utils.getUnsignedInt(Hashing.murmur3_128().hashLong(h).hashCode());
+        long delta = reHashing(h);
         for (int j = 0; j < k; j++) {
             int bitPos = (int) (h % bits);
             if ((filter.get(bitPos / 8) & (1 << (bitPos % 8))) == 0) {
@@ -82,7 +83,11 @@ public class BloomFilterPolicy implements FilterPolicy {
         return true;
     }
 
-    public static long bloomHash(byte[] key) {
+    private static long bloomHash(byte[] key) {
         return Utils.hash(key);
+    }
+
+    private static long reHashing(long h) {
+        return Utils.getUnsignedInt(Hashing.murmur3_128().hashLong(h).hashCode());
     }
 }

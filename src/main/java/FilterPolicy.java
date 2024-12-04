@@ -1,11 +1,10 @@
-import java.nio.ByteBuffer;
 import java.util.List;
 
-public interface FilterPolicy {
+public interface FilterPolicy<T> {
 
     String name();
 
-    ByteBuffer createFilter(List<byte[]> keys);
+    T createFilter(List<byte[]> keys);
 
-    boolean keyMayMatch(byte[] key, ByteBuffer filter);
+    boolean keyMayMatch(byte[] key, T filter);
 }
