@@ -1,3 +1,5 @@
+package com.ldb.utils.filter;
+
 import java.util.List;
 
 public interface FilterPolicy<T> {

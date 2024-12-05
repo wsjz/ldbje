@@ -1,3 +1,5 @@
+package com.ldb.utils.filter;
+
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 

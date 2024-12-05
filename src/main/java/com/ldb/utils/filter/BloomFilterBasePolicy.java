@@ -1,14 +1,16 @@
+package com.ldb.utils.filter;
+
 import com.google.common.hash.Hashing;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class BloomFilterPolicy implements FilterPolicy<ByteBuffer> {
+public class BloomFilterBasePolicy implements FilterPolicy<ByteBuffer> {
 
     private final int bitsPerKey;
     private int k;
 
-    public BloomFilterPolicy(int bitsPerKey) {
+    public BloomFilterBasePolicy(int bitsPerKey) {
         this.bitsPerKey = bitsPerKey;
         // 哈希函数的个数k，位数组的长度 m，数据集大小n;
         // 1. 为了获得最优的准确率，当k = ln2 * (m/n)时，布隆过滤器获得最优的准确性；

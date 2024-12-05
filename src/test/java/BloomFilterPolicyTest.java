@@ -1,4 +1,6 @@
 import com.google.common.hash.BloomFilter;
+import com.ldb.utils.filter.BloomFilterGuavaPolicy;
+import com.ldb.utils.filter.BloomFilterBasePolicy;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -10,7 +12,7 @@ import org.junit.jupiter.api.Assertions;
 
 class BloomFilterPolicyTest {
 
-    private static BloomFilterPolicy policy;
+    private static BloomFilterBasePolicy policy;
     private static BloomFilterGuavaPolicy guavaPolicy;
 
     @Test
@@ -42,7 +44,7 @@ class BloomFilterPolicyTest {
     }
 
     private static ByteBuffer buildFilter(List<String> keys) {
-        policy = new BloomFilterPolicy(10);
+        policy = new BloomFilterBasePolicy(10);
         return policy.createFilter(keys.stream().map(String::getBytes).collect(Collectors.toList()));
     }
 
@@ -121,17 +123,15 @@ class BloomFilterPolicyTest {
         Assertions.assertTrue(() -> matchesG(filter, "world"));
         Assertions.assertFalse(() -> matchesG(filter, "xxxxx"));
         Assertions.assertFalse(() -> matchesG(filter, "foo"));
+        Assertions.assertFalse(() -> matchesG(filter, "h"));
     }
 
     @Test
     void testGuavaFalsePositiveRate() {
-        testGuavaRangeFalsePositiveRate(1, 80, 0.02); // false positive rate < 2%
-        System.err.println("-------------------------------------------------------");
-        testGuavaRangeFalsePositiveRate(80, 100000, 0.01); // false positive rate < 1%
+        testGuavaRangeFalsePositiveRate(1, 100000, 0.01); // false positive rate < 1%
     }
 
     static void testGuavaRangeFalsePositiveRate(int start, int end, double goodRate) {
-        // Count number of filters that significantly exceed the false positive rate
         int mediocreFilters = 0;
         int goodFilters = 0;
         for (long length = start; length <= end; length = nextLength(length)) {
@@ -140,22 +140,17 @@ class BloomFilterPolicyTest {
                 keys.add(String.valueOf(i));
             }
             BloomFilter<byte[]> filter = buildGuavaFilter(keys);
-            // System.out.printf("Max length: %s%n", (length * 10 / 8) + 40);
             Assertions.assertTrue(filter.approximateElementCount() < (length * 10 / 8) + 40);
-
             // All added keys must match
             for (long i = 0; i < length; i++) {
                 String key = String.valueOf(i);
-                // System.out.printf("Length: %d, Key: %s%n", length, key);
                 Assertions.assertTrue(matchesG(filter, key));
             }
-
-            // Check false positive rate
             double rate = falsePositiveRateG(filter);
             System.err.printf("False positives: %5.2f%% @ length = %6d ; bytes = %6d\n",
                     rate * 100.0, length, filter.approximateElementCount());
             if (rate > goodRate) {
-                mediocreFilters++;  // Allowed, but not too often
+                mediocreFilters++;
             } else {
                 goodFilters++;
             }
