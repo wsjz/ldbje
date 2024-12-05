@@ -18,7 +18,6 @@ public class Op {
         try {
             VersionEdit edit = new VersionEdit();
             boolean saveManifest = db.recover(edit);
-
             if (saveManifest) {
                 edit.setPrevLogNumber(0);
                 edit.setLogNumber(db.getLogFileNumber());
