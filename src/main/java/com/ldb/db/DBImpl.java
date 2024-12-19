@@ -92,7 +92,8 @@ public class DBImpl implements DB {
                     throw new RuntimeException(e);
                 }
                 allowDelay = false; // Do not delay a single write more than once
-            } else if () {
+            } else if (true) {
+
             }
 
 
