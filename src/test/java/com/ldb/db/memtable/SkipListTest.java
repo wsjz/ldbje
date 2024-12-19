@@ -10,12 +10,18 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 class SkipListTest {
 
     @Test
     public void testEmptyList() {
-        SkipList<Integer> list = new SkipList<>(new SkipList.DefaultComparator<Integer>());
+        SkipList<Integer> list = new SkipList<>();
         Assertions.assertFalse(list.contains(10));
 
         SeekableIterator<Integer> iter = list.iterator();
@@ -34,7 +40,7 @@ class SkipListTest {
         int R = 5000;
         Random rnd = new Random();
         TreeSet<Integer> keys = new TreeSet<>();
-        SkipList<Integer> list = new SkipList<>(new SkipList.DefaultComparator<Integer>());
+        SkipList<Integer> list = new SkipList<>();
         for (int i = 0; i < N; i++) {
             Integer key = rnd.nextInt(R) % R;
             if (keys.add(key)) {
@@ -108,4 +114,48 @@ class SkipListTest {
         }
     }
 
+    @Test
+    public void testAccessConcurrency() throws InterruptedException, ExecutionException {
+        ExecutorService executor = new ThreadPoolExecutor(64, 1000,
+                10, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        SkipList<Integer> list = new SkipList<>();
+        List<Future<?>> writeFutures = new ArrayList<>();
+        List<Future<?>> readFutures = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            writeFutures.add(executor.submit(() -> writeTo(list)));
+            readFutures.add(executor.submit(() -> readFrom(list)));
+        }
+        for (Future<?> writeFuture : writeFutures) {
+            var ignored = writeFuture.get();
+        }
+        for (Future<?> readFuture : readFutures) {
+            var ignored = readFuture.get();
+        }
+        SeekableIterator<Integer> iter = list.iterator();
+        StringBuilder builder = new StringBuilder().append('[');
+        while (iter.valid()) {
+            builder.append(iter.key() + ',');
+            iter.next();
+        }
+        String res = builder.append(']').toString();
+        System.out.println(res);
+//        if (executor.awaitTermination(30, TimeUnit.SECONDS)) {
+//            executor.shutdownNow();
+//        }
+    }
+
+    private void writeTo(SkipList<Integer> list) {
+        int i = 0;
+        while (i < 10) {
+            if (!list.contains(i)) {
+                list.insert(i);
+            }
+            i++;
+        }
+    }
+
+
+    private void readFrom(SkipList<Integer> list) {
+
+    }
 }
