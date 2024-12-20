@@ -14,10 +14,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 class SkipListTest {
+
+    static final Random random = ThreadLocalRandom.current();
 
     @Test
     public void testEmptyList() {
@@ -121,41 +124,38 @@ class SkipListTest {
         SkipList<Integer> list = new SkipList<>();
         List<Future<?>> writeFutures = new ArrayList<>();
         List<Future<?>> readFutures = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 100; i++) {
             writeFutures.add(executor.submit(() -> writeTo(list)));
             readFutures.add(executor.submit(() -> readFrom(list)));
+            Thread.sleep(1);
         }
         for (Future<?> writeFuture : writeFutures) {
             var ignored = writeFuture.get();
         }
         for (Future<?> readFuture : readFutures) {
-            var ignored = readFuture.get();
+            System.out.println(readFuture.get());
         }
-        SeekableIterator<Integer> iter = list.iterator();
-        StringBuilder builder = new StringBuilder().append('[');
-        while (iter.valid()) {
-            builder.append(iter.key() + ',');
-            iter.next();
-        }
-        String res = builder.append(']').toString();
-        System.out.println(res);
-//        if (executor.awaitTermination(30, TimeUnit.SECONDS)) {
-//            executor.shutdownNow();
-//        }
+        executor.shutdown();
     }
 
     private void writeTo(SkipList<Integer> list) {
-        int i = 0;
-        while (i < 10) {
-            if (!list.contains(i)) {
-                list.insert(i);
+        for (int i = 0; i < 10; i++) {
+            int num = random.nextInt(10000);
+            if (!list.contains(num)) {
+                list.insert(num);
             }
-            i++;
         }
     }
 
 
-    private void readFrom(SkipList<Integer> list) {
-
+    private String readFrom(SkipList<Integer> list) {
+        SeekableIterator<Integer> iter = list.iterator();
+        iter.seekToFirst();
+        StringBuilder builder = new StringBuilder().append('[');
+        while (iter.valid()) {
+            builder.append(iter.key()).append(',');
+            iter.next();
+        }
+        return builder.append(']').toString();
     }
 }

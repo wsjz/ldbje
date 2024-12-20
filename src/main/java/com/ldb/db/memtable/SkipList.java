@@ -34,7 +34,8 @@ public class SkipList<KEY extends Comparable<? super KEY>> {
         List<Node<KEY>> prev = new ArrayList<>(Collections.nCopies(kMaxHeight, null));
         Node<KEY> x = findGreaterOrEqual(key, prev);
         if (x != null && equal(key, x.key)) {
-            throw new IllegalArgumentException("Key " + key + " already exists");
+            // throw new IllegalArgumentException("Key " + key + " already exists");
+            return;
         }
         int height = randomHeight();
         if (height > maxHeight) {

@@ -2,6 +2,6 @@ package com.ldb.db;
 
 public interface DB {
 
-    boolean Write(WriteOptions options, WriteBatch updates);
+    Status write(WriteOptions options, WriteBatch updates);
 
 }
