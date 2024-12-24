@@ -2,42 +2,52 @@ package com.ldb.db.memtable;
 
 import com.ldb.utils.SeekableIterator;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-public class SkipList<KEY> {
+public class SkipList<KEY extends Comparable<? super KEY>> {
     private final Node<KEY> head;
     private final Random rnd = ThreadLocalRandom.current();
-    private final Comparator<KEY> comparator;
+    private final Comparator<? super KEY> comparator;
     private volatile int maxHeight; // 保证修改后，其他线程立即可见
     private static final int kBranching = 4;
     private static final int kMaxHeight = 12;
 
-    public SkipList(Comparator<KEY> comparator) {
+    public SkipList() {
+        this.head = newNode(null, kMaxHeight);
+        this.comparator = new DefaultComparator<>();
+        this.maxHeight = 1;
+    }
+
+    public SkipList(Comparator<? super KEY> comparator) {
         this.head = newNode(null, kMaxHeight);
         this.comparator = comparator;
         this.maxHeight = 1;
     }
 
     public void insert(KEY key) {
-        Node<KEY>[] prev = new Node[kMaxHeight];
+        List<Node<KEY>> prev = new ArrayList<>(Collections.nCopies(kMaxHeight, null));
         Node<KEY> x = findGreaterOrEqual(key, prev);
         if (x != null && equal(key, x.key)) {
-            throw new IllegalArgumentException("Key " + key + " already exists");
+            // throw new IllegalArgumentException("Key " + key + " already exists");
+            return;
         }
         int height = randomHeight();
         if (height > maxHeight) {
             for (int i = maxHeight; i < height; i++) {
-                prev[i] = head;
+                prev.set(i, head);
             }
             maxHeight = height;
         }
         x = newNode(key, height);
         for (int i = 0; i < height; i++) {
-            x.unprotectedSetNext(i, prev[i].unprotectedNext(i));
-            prev[i].setNext(i, x);
+            x.unprotectedSetNext(i, prev.get(i).unprotectedNext(i));
+            prev.get(i).setNext(i, x);
         }
     }
 
@@ -65,10 +75,6 @@ public class SkipList<KEY> {
         return comparator.compare(key1, key2) == 0;
     }
 
-    private boolean lessThan(KEY key1, KEY key2) {
-        return comparator.compare(key1, key2) < 0;
-    }
-
     private boolean greaterOrEqual(KEY key1, KEY key2) {
         return comparator.compare(key1, key2) >= 0;
     }
@@ -77,14 +83,14 @@ public class SkipList<KEY> {
         return findGreaterOrEqual(key, null);
     }
 
-    private Node<KEY> findGreaterOrEqual(KEY key, Node<KEY>[] prev) {
+    private Node<KEY> findGreaterOrEqual(KEY key,List<Node<KEY>> prev) {
         Node<KEY> x = head;
         int level = maxHeight - 1;
         while (true) {
             Node<KEY> next = x.next(level);
             if (next == null || greaterOrEqual(next.key, key)) {
                 if (prev != null) {
-                    prev[level] = x;
+                    prev.set(level, x);
                 }
                 if (level == 0) {
                     return next;
@@ -224,7 +230,7 @@ public class SkipList<KEY> {
         }
     }
 
-    static class DefaultComparator<KEY extends Comparable<KEY>>
+    static class DefaultComparator<KEY extends Comparable<? super KEY>>
             implements Comparator<KEY> {
         @Override
         public int compare(KEY o1, KEY o2) {
